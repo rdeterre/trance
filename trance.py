@@ -53,20 +53,22 @@ class Capacitor(Node):
         self.c = capacitance
         self.ports = [Electrical_port() for i in range(2)]
 
+    def v(self, time):
+        """
+        Associations are  V(t - n * dt) -> v(-n) 
+        """
+        return self.ports[1].symbols[time] - self.ports[0].symbols[time]
+        
     def relations(self, step_number):
         rel = []
         # Relation 1
         rel.append(self.ports[0].i.symbols[0] - (self.q.symbols[0] - self.q.symbols[-1]) / self.dt)
         # Relation 2 - Hang in there
-        vt = self.ports[1].symbols[0] - self.ports[0].symbols[0]
-        vtmdt = self.ports[1].symbols[-1] - self.ports[0].symbols[-1]
-        rel.append(self.ports[0].i.symbols[0] - self.c * (vt - vtmdt) / self.dt)
+        rel.append(self.ports[0].i.symbols[0] - self.c * (self.v(0) - self.v(-1)) / self.dt)
         # Relation 3 - Relax
         rel.append(self.ports[0].symbols[0] = self.ports[1].symbols[0])
-
         # Relations for q
         rel += self.q.relations(step_number)
-
         return rel
 
 class Current_source(Node):
@@ -75,26 +77,44 @@ class Current_source(Node):
     """
     def __init__(self, current):
         self.i = current
-        self.in_port = Electrical_port()
-        self.out_port = Electrical_port()
+        self.ports = [Electrical_port() for i in range(2)]
 
     def relations(self):
         rel = []
-        rel.append(self.in_port.i + self.out_port.i)
+        rel.append(self.ports[1].symbols[0] + self.ports[0].symbols[0])
         return rel
 
 class Electrical_link:
     def __init__(self):
         self.ports = []
 
+    def i_sum(self):
+        sum = 0
+        for n in self.ports:
+            sum += n.symbols[0]
+        return sum
+
     def relations(self):
         rel = []
         for n in self.ports[1:]:
-            rel.append(self.ports[0].ni - n.ni)
-            rel.append(self.ports[0].oi - n.oi)
             rel.append(self.ports[0].nv - n.nv)
             rel.append(self.ports[0].ov - n.ov)
+        rel.append(self.i_sum())
         return rel
+
+def solve(time_step, elements):
+    # Concatenate relations.
+    rel = []
+    var = []
+    for e in elements:
+        rel += e.relations
+        var += e.variables
+
+    # TODO : Check that.
+    results = sp.solve(rel, var)
+    # TODO : Check that also.
+    for e in elements:
+        e.assign(time_step, results)
 
 if __name__ == "__main__":
     """
