@@ -171,42 +171,30 @@ class Electrical_link:
             var.append(p.i)
             var.append(p.v)
         return var
-            
 
-def solve(time_step, elements, derivative_order):
-    # Concatenate relations.
-    rel = []
-    var = []
-    symbols = []
-    
-    for e in elements:
-        rel += e.relations(time_step)
-        var += e.variables()
+class NodeSystem:
+    def __init__(self):
+        self.nodes = []
+        self.links = []
+        self.derivative_order = 0
 
-    for v in var:
-        for i in range (derivative_order + 1):
-            symbols.append(v.symbols[i])
-
-    # TODO : Check that.
-    results = sp.solve(rel, symbols)
-    # TODO : Check that also.
-    # for i in range(len(results)):
-        #while len(var[i].values) <= time_step:
-            #var[i].append(np.nan)
-
-    # print("Results:")
-    # for r in results:
-    #     print("%s: %s" % (r, results[r]))
-    # print("Relations:")
-    # for r in rel:
-    #     print(r)
-    # print("Symbols:")
-    # for s in symbols:
-    #     print(s)
-    for v in var:
-        v.values = np.append(v.values, results[v.symbols[0]])
+    def solve(time_step):
+        # Concatenate relations.
+        rel = []
+        var = []
+        symbols = []
+        for e in elements:
+            rel += e.relations(time_step)
+            var += e.variables()
+        for v in var:
+            for i in range (derivative_order + 1):
+                symbols.append(v.symbols[i])
+        results = sp.solve(rel, symbols)
+        if not len(results) == len(symbols):
+            raise Exception("The solver failed to deduce all symbols")
+        for v in var:
+            v.values = np.append(v.values, results[v.symbols[0]])
         
-
 if __name__ == "__main__":
 
     """
