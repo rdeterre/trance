@@ -143,6 +143,9 @@ class Voltage_source(Node):
         # Relations for old I and V values
         rel += self.port.relations(step_number)
         return rel
+
+    def variables(self):
+        return []
         
 
 class Electrical_link:
@@ -191,17 +194,17 @@ def solve(time_step, elements, derivative_order):
         #while len(var[i].values) <= time_step:
             #var[i].append(np.nan)
 
-    print("Results:")
-    for r in results:
-        print("%s: %s" % (r, results[r]))
-    print("Relations:")
-    for r in rel:
-        print(r)
-    print("Symbols:")
-    for s in symbols:
-        print(s)
-    # for v in var:
-        # v.values = np.append(v.values, results[v.symbols[0]])
+    # print("Results:")
+    # for r in results:
+    #     print("%s: %s" % (r, results[r]))
+    # print("Relations:")
+    # for r in rel:
+    #     print(r)
+    # print("Symbols:")
+    # for s in symbols:
+    #     print(s)
+    for v in var:
+        v.values = np.append(v.values, results[v.symbols[0]])
         
 
 if __name__ == "__main__":
@@ -238,9 +241,11 @@ if __name__ == "__main__":
     cur.ports[0].i.values = np.append(cur.ports[0].i.values, 0)
     cur.ports[1].v.values = np.append(cur.ports[1].v.values, 0)
     cur.ports[1].i.values = np.append(cur.ports[1].i.values, 0)
+    gnd.port.i.values = np.append(gnd.port.i.values, 0)
+    gnd.port.v.values = np.append(gnd.port.v.values, 0)
     els = [cur, cap, gnd, l1, l2]
     for i in range(1, 2):
         solve(i, els, 1)
 
-    # plt.plot(cap.q.values)
-    # plt.show()                  
+    plt.plot(cap.q.values)
+    plt.show()                  
