@@ -2,22 +2,12 @@ import sympy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 
-class Node:
-    def __init__(self, time_step, name):
-        self.dt = time_step
-        self.name = name
-
-class Port:
-    def __init__(self, name):
-        self.name = name
-
-
-class Electrical_port(Port):
+class Electrical_port():
     def __init__(self, name, derivative_order):
         self.name = name
-        self.derivative_order = derivative_order
-        self.i = Variable('%s.i' % self.name, derivative_order)
-        self.v = Variable('%s.v' % self.name, derivative_order)
+        self.min_derivative_order = 0
+        self.i = Variable('%s.i' % self.name)
+        self.v = Variable('%s.v' % self.name)
 
     def relations(self, step_number):
         rel = []
@@ -25,15 +15,33 @@ class Electrical_port(Port):
         rel += self.v.relations(step_number)
         return rel
 
+    def initialize(self, derivative_order, total_steps,
+                   default_value):
+        if derivative_order < self.min_derivative_order:
+            raise Exception("Derivative order cannot be less than %d"
+                            % self.min_derivative_order)
+        self.i.initialize(derivative_order, total_steps, default_value)
+        self.v.initialize(derivative_order, total_steps, default_value)
+
 class Variable:
     variable_count = 0
-    def __init__(self, name, derivative_order):
+    def __init__(self, name):
         self.name = name
-        self.derivative_order = derivative_order
         self.variable_count = Variable.variable_count;
-        self.symbols = [sp.Symbol("{0}_{1}_{2}".format(self.name, self.variable_count, i)) for i in range(derivative_order + 1)]
+        self.symbols = []
         Variable.variable_count += 1
         self.values = np.array([])
+
+    def initialize(derivative_order, total_steps, default_value):
+        self.values = np.zeros(shape(total_steps,))
+        if default_value != 0:
+            for index, x in self.values:
+                x = 0
+        self.derivative_order = derivative_order
+        self.symbols =
+            [sp.Symbol("{0}_{1}_{2}".format(self.name,
+                                            self.variable_count, i))
+                 for i in range(derivative_order + 1)]
 
     def relations(self, step_number):
         print("Variable %s has number of elements %d while asking for relation %d"
@@ -43,7 +51,6 @@ class Variable:
             # Ahh! Missing initial value!
             raise Exception("Variable %s is missing initial value at step #%d"
                             % (self.name, step_number))
-        
 
         # Return useful values
         rel = []
@@ -52,7 +59,7 @@ class Variable:
             rel.append(self.symbols[-i] - self.values[step_number - i])
         return rel
 
-class Capacitor(Node):
+class Capacitor():
     """
     Model for an ideal Capacitor.
     Relations used are the following :
@@ -66,30 +73,46 @@ class Capacitor(Node):
     Relation 2 translates to :
                   I(t) = C * (V(t) - V(t - dt)) / dt
     """
-    def __init__(self, capacitance, dt, name, derivative_order):
-        if derivative_order < 1:
-            raise Exception("Derivative order cannot be less than one for Capacitor")
-        self.derivative_order = derivative_order
+    def __init__(self, capacitance, name):
+        self.min_derivative_order = 1
         self.name = name
-        self.dt = dt
-        self.q = Variable('q', derivative_order)
+        self.variables = {}
+        self.variables['q'] = Variable('q')
         self.c = capacitance
-        self.ports = [Electrical_port("%s.p%d" % (self.name, i), derivative_order) for i in range(2)]
+        self.ports =
+            [Electrical_port("%s.p%d" % (self.name, i),
+                             derivative_order) for i in range(2)]
+
+    def initialize(self, dt, derivative_order, total_steps,
+                   default_value):
+        if derivative_order < self.min_derivative_order:
+            raise Exception("Needs derivative order higher than %d"
+                            % self.min_derivative_order)
+        for v in self.variables:
+            v.initialize(derivative_order, total_steps, default_value)
+        for p in self.ports:
+            p.initialize(derivative_order, total_steps, default_value)
+        
 
     def v(self, time):
         """
         Associations are  V(t - n * dt) -> v(-n) 
         """
-        return self.ports[1].v.symbols[time] - self.ports[0].v.symbols[time]
+        return self.ports[1].v.symbols[time]
+            - self.ports[0].v.symbols[time]
         
     def relations(self, step_number):
         rel = []
         # Relation 1
-        rel.append(self.ports[0].i.symbols[0] - (self.q.symbols[0] - self.q.symbols[-1]) / self.dt)
+        rel.append(self.ports[0].i.symbols[0]
+                   - (self.q.symbols[0]
+                      - self.q.symbols[-1]) / self.dt)
         # Relation 2 - Hang in there
-        rel.append(self.ports[0].i.symbols[0] - self.c * (self.v(0) - self.v(-1)) / self.dt)
+        rel.append(self.ports[0].i.symbols[0]
+                   - self.c * (self.v(0) - self.v(-1)) / self.dt)
         # Relation 3 - Relax
-        rel.append(self.ports[0].i.symbols[0] + self.ports[1].i.symbols[0])
+        rel.append(self.ports[0].i.symbols[0]
+                   + self.ports[1].i.symbols[0])
         # Relations for q
         rel += self.q.relations(step_number)
 
@@ -102,19 +125,30 @@ class Capacitor(Node):
     def variables(self):
         return [self.q]
 
-class Current_source(Node):
+class Current_source():
     """
     Model for an ideal current source.
     """
-    def __init__(self, current, name, derivative_order):
+    def __init__(self, current, name):
+        self.min_derivative_order = 0
         self.name = name
         self.i = current
-        self.ports = [Electrical_port("%s.p%d" % (self.name, i), derivative_order)
-                      for i in range(2)]
+        self.ports =
+            [Electrical_port("%s.p%d" % (self.name, i))
+             for i in range(2)]
+
+    def initialize(self, dt, derivative_order, total_steps,
+                   default_value):
+        if derivative_order < self.min_derivative_order:
+            raise Exception("Needs derivative order higher than %d"
+                            % self.min_derivative_order)
+        for v in self.ports:
+            p.initialize(derivative_order, total_steps, default_value)
 
     def relations(self, step_number):
         rel = []
-        rel.append(self.ports[1].i.symbols[0] + self.ports[0].i.symbols[0])
+        rel.append(self.ports[1].i.symbols[0]
+                   + self.ports[0].i.symbols[0])
         rel.append(self.ports[0].i.symbols[0] - self.i)
 
          # Relations for old I and V values
@@ -126,22 +160,33 @@ class Current_source(Node):
     def variables(self):
         return []
 
-class Voltage_source(Node):
+class Voltage_source():
     """
     Model for an ideal voltage source.
     """
-    def __init__(self, voltage, name, derivative_order):
+    def __init__(self, voltage, name):
+        self.min_derivative_order = 0
         self.name = name
         self.v = voltage
-        self.derivative_order = derivative_order
-        self.port = Electrical_port("%s.p" % self.name, derivative_order)
+        self.ports =
+            [Electrical_port("%s.p" % self.name)]
+
+    def initialize(self, dt, derivative_order, total_steps,
+                   default_value):
+        if derivative_order < self.min_derivative_order:
+            raise Exception("Needs derivative order higher than %d"
+                            % self.min_derivative_order)
+
+        self.ports[0].initialize(derivative_order,
+                                 total_steps,
+                                 default_value)
 
     def relations(self, step_number):
         rel = []
-        rel.append(self.port.v.symbols[0] - self.v)
+        rel.append(self.ports[0].v.symbols[0] - self.v)
 
         # Relations for old I and V values
-        rel += self.port.relations(step_number)
+        rel += self.ports[0].relations(step_number)
         return rel
 
     def variables(self):
@@ -177,6 +222,8 @@ class NodeSystem:
         self.nodes = []
         self.links = []
         self.derivative_order = 0
+
+    def add_ # TODO
 
     def solve(time_step):
         # Concatenate relations.
