@@ -44,8 +44,8 @@ class Variable:
                  for i in range(derivative_order + 1)]
 
     def relations(self, step_number):
-        print("Variable %s has number of elements %d while asking for relation %d"
-              % (self.name, len(self.values), step_number))
+        # print("Variable %s has number of elements %d while asking for relation %d"
+              # % (self.name, len(self.values), step_number))
 
         if len(self.values) < step_number - 1:
             # Ahh! Missing initial value!
@@ -55,7 +55,7 @@ class Variable:
         # Return useful values
         rel = []
         for i in range(1, self.derivative_order + 1):
-            print("Give relation for variable %s" % self.name)
+            # print("Give relation for variable %s" % self.name)
             rel.append(self.symbols[-i] - self.values[step_number - i])
         return rel
 
@@ -259,8 +259,9 @@ class Simulation:
         results = sp.solve(rel, symbols)
         if not len(results) == len(symbols):
             raise Exception("The solver failed to deduce all symbols")
+        print("Results are : %s" % results.values())
         for v in var:
-            v.values[time_step] = v.symbols[0]
+            v.values[time_step] = results[v.symbols[0]]
             # = np.append(v.values, results[v.symbols[0]])
 
     def initialize(self, dt, total_time_steps, default_value):
