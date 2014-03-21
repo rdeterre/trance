@@ -1,41 +1,42 @@
 from trance import *
 
-if __name__ == "__main__":
-    """
-      +-------+
-    +-+-+   +-+--+
-    |Cur|   |Capa|
-    +-+-+   +-+--+
-      +---+---+
-        +-+-+
-        |Gnd|
-        +---+
-    """
-    cur = Current_source(current=1, name="cur")
-    cap = Capacitor(capacitance=1e-3, name="cap")
-    gnd = Voltage_source(voltage=0, name="gnd")
 
-    l1 = Electrical_link([
-        cur.ports[0]
-        cap.ports[0]
-        gnd.port
-    ])
+"""
+    +-------+
+  +-+-+   +-+--+
+  |Cur|   |Capa|
+  +-+-+   +-+--+
+    +---+---+
+      +-+-+
+      |Gnd|
+      +---+
+"""
+cur = Current_source(current=1, name="cur")
+cap = Capacitor(capacitance=1e-3, name="cap")
+gnd = Voltage_source(voltage=0, name="gnd")
 
-    l2 = Electrical_link([
-        cur.ports[1]
-        cap.ports[1]
-    ])
+l1 = Electrical_link([
+    cur.ports[0],
+    cap.ports[0],
+    gnd.ports[0]
+])
 
-    sim = Simulation()
+l2 = Electrical_link([
+    cur.ports[1],
+    cap.ports[1]
+])
 
-    sim.add_elements([cur, cap, gnd, l1, l2])
+sim = Simulation()
 
-    sim.initialize(dt = 0.1, total_time_steps=20, default_value=0)
+sim.add_nodes([cur, cap, gnd])
+sim.add_links([l1, l2])
 
-    cap.q.values[sim.derivative_order - 1] = 1
+sim.initialize(dt = 0.1, total_time_steps=3, default_value=0)
 
-    sim.simulate()
+cap.vars['q'].values[sim.derivative_order - 1] = 1
 
-    plt.plot(cap.q.values)
-    plt.show()
+sim.simulate()
+
+plt.plot(cap.vars['q'].values)
+plt.show()
 

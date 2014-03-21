@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Electrical_port():
-    def __init__(self, name, derivative_order):
+    def __init__(self, name):
         self.name = name
         self.min_derivative_order = 0
         self.i = Variable('%s.i' % self.name)
@@ -27,20 +27,20 @@ class Variable:
     variable_count = 0
     def __init__(self, name):
         self.name = name
-        self.variable_count = Variable.variable_count;
+        self.variable_count = Variable.variable_count
         self.symbols = []
         Variable.variable_count += 1
         self.values = np.array([])
 
-    def initialize(derivative_order, total_steps, default_value):
-        self.values = np.zeros(shape(total_steps,))
+    def initialize(self, derivative_order, total_steps, default_value):
+        self.values = np.zeros(total_steps)
         if default_value != 0:
             for index, x in self.values:
                 x = 0
         self.derivative_order = derivative_order
-        self.symbols =
-            [sp.Symbol("{0}_{1}_{2}".format(self.name,
-                                            self.variable_count, i))
+        self.symbols = [sp.Symbol("{0}_{1}_{2}"
+                                  .format(self.name,
+                                          self.variable_count, i))
                  for i in range(derivative_order + 1)]
 
     def relations(self, step_number):
@@ -76,45 +76,46 @@ class Capacitor():
     def __init__(self, capacitance, name):
         self.min_derivative_order = 1
         self.name = name
-        self.variables = {}
-        self.variables['q'] = Variable('q')
+        self.vars = {}
+        self.vars['q'] = Variable('q')
         self.c = capacitance
-        self.ports =
-            [Electrical_port("%s.p%d" % (self.name, i),
-                             derivative_order) for i in range(2)]
+        self.ports = [Electrical_port("%s.p%d" % (self.name, i))
+                      for i in range(2)]
+
+    def variables():
+        vs = []
+        for v in self.vars:
+            vs.append(self.vars[v])
+        return vs
 
     def initialize(self, dt, derivative_order, total_steps,
                    default_value):
         if derivative_order < self.min_derivative_order:
             raise Exception("Needs derivative order higher than %d"
                             % self.min_derivative_order)
-        for v in self.variables:
-            v.initialize(derivative_order, total_steps, default_value)
+        self.dt = dt
+        for v in self.vars:
+            self.vars[v].initialize(derivative_order, total_steps, default_value)
         for p in self.ports:
             p.initialize(derivative_order, total_steps, default_value)
         
-
     def v(self, time):
         """
         Associations are  V(t - n * dt) -> v(-n) 
         """
-        return self.ports[1].v.symbols[time]
-            - self.ports[0].v.symbols[time]
+        return self.ports[1].v.symbols[time] - self.ports[0].v.symbols[time]
         
     def relations(self, step_number):
         rel = []
         # Relation 1
-        rel.append(self.ports[0].i.symbols[0]
-                   - (self.q.symbols[0]
-                      - self.q.symbols[-1]) / self.dt)
+        q = self.vars['q']
+        rel.append(self.ports[0].i.symbols[0] - (q.symbols[0] - q.symbols[-1]) / self.dt)
         # Relation 2 - Hang in there
-        rel.append(self.ports[0].i.symbols[0]
-                   - self.c * (self.v(0) - self.v(-1)) / self.dt)
+        rel.append(self.ports[0].i.symbols[0] - self.c * (self.v(0) - self.v(-1)) / self.dt)
         # Relation 3 - Relax
-        rel.append(self.ports[0].i.symbols[0]
-                   + self.ports[1].i.symbols[0])
+        rel.append(self.ports[0].i.symbols[0] + self.ports[1].i.symbols[0])
         # Relations for q
-        rel += self.q.relations(step_number)
+        rel += self.vars['q'].relations(step_number)
 
         # Relations for old I and V values
         rel += self.ports[0].relations(step_number)
@@ -123,7 +124,11 @@ class Capacitor():
         return rel
 
     def variables(self):
-        return [self.q]
+        vars = [self.vars['q']]
+        for p in self.ports:
+            vars.append(p.i)
+            vars.append(p.v)
+        return vars
 
 class Current_source():
     """
@@ -133,16 +138,15 @@ class Current_source():
         self.min_derivative_order = 0
         self.name = name
         self.i = current
-        self.ports =
-            [Electrical_port("%s.p%d" % (self.name, i))
-             for i in range(2)]
+        self.ports = [Electrical_port("%s.p%d" % (self.name, i))
+                      for i in range(2)]
 
     def initialize(self, dt, derivative_order, total_steps,
                    default_value):
         if derivative_order < self.min_derivative_order:
             raise Exception("Needs derivative order higher than %d"
                             % self.min_derivative_order)
-        for v in self.ports:
+        for p in self.ports:
             p.initialize(derivative_order, total_steps, default_value)
 
     def relations(self, step_number):
@@ -158,7 +162,11 @@ class Current_source():
         return rel
 
     def variables(self):
-        return []
+        vars = []
+        for p in self.ports:
+            vars.append(p.i)
+            vars.append(p.v)
+        return vars
 
 class Voltage_source():
     """
@@ -168,8 +176,7 @@ class Voltage_source():
         self.min_derivative_order = 0
         self.name = name
         self.v = voltage
-        self.ports =
-            [Electrical_port("%s.p" % self.name)]
+        self.ports = [Electrical_port("%s.p" % self.name)]
 
     def initialize(self, dt, derivative_order, total_steps,
                    default_value):
@@ -190,12 +197,16 @@ class Voltage_source():
         return rel
 
     def variables(self):
-        return []
+        vars = []
+        for p in self.ports:
+            vars.append(p.i)
+            vars.append(p.v)
+        return vars
         
 
 class Electrical_link:
-    def __init__(self):
-        self.ports = []
+    def __init__(self, ports):
+        self.ports = ports
 
     def i_sum(self):
         sum = 0
@@ -211,36 +222,53 @@ class Electrical_link:
         return rel
 
     def variables(self):
-        var = []
-        for p in self.ports:
-            var.append(p.i)
-            var.append(p.v)
-        return var
+        return []
 
-class NodeSystem:
+class Simulation:
     def __init__(self):
         self.nodes = []
         self.links = []
         self.derivative_order = 0
 
-    def add_ # TODO
+    def add_nodes(self, nodes):
+        for n in nodes:
+            if n.min_derivative_order > self.derivative_order:
+                self.derivative_order = n.min_derivative_order
+        self.nodes += nodes
 
-    def solve(time_step):
+    def add_links(self, links):
+        self.links += links
+
+    def simulate(self):
+        for st in range(self.derivative_order, self.total_time_steps):
+            self.solve(st)
+
+    def solve(self, time_step):
         # Concatenate relations.
         rel = []
         var = []
         symbols = []
-        for e in elements:
+        for e in self.nodes:
             rel += e.relations(time_step)
             var += e.variables()
+        for l in self.links:
+            rel += l.relations(time_step)
         for v in var:
-            for i in range (derivative_order + 1):
+            for i in range (self.derivative_order + 1):
                 symbols.append(v.symbols[i])
         results = sp.solve(rel, symbols)
         if not len(results) == len(symbols):
             raise Exception("The solver failed to deduce all symbols")
         for v in var:
-            v.values = np.append(v.values, results[v.symbols[0]])
+            v.values[time_step] = v.symbols[0]
+            # = np.append(v.values, results[v.symbols[0]])
+
+    def initialize(self, dt, total_time_steps, default_value):
+        self.total_time_steps = total_time_steps
+        for n in self.nodes:
+            n.initialize(dt, self.derivative_order,
+                         total_time_steps, default_value)
+
         
 if __name__ == "__main__":
 
@@ -279,8 +307,11 @@ if __name__ == "__main__":
     gnd.port.i.values = np.append(gnd.port.i.values, 0)
     gnd.port.v.values = np.append(gnd.port.v.values, 0)
     els = [cur, cap, gnd, l1, l2]
-    for i in range(1, 2):
-        solve(i, els, 1)
+    try:
+        for i in range(1, 2):
+            solve(i, els, 1)
+    except TypeError:
+        print("Type error while solving")
 
     plt.plot(cap.q.values)
     plt.show()                  
