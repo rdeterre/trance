@@ -76,7 +76,7 @@ class Node:
             v.initialize(derivative_order, total_steps, default_value)
         for p in self.ports:
             p.initialize(derivative_order, total_steps, default_value)
-            
+
     def relations(self, step_number):
         rel = []
         for p in self.ports:
@@ -108,7 +108,7 @@ class Capacitor(Node):
 
     def v(self, time):
         return self.ports[1].v.symbols[time] - self.ports[0].v.symbols[time]
-        
+
     def relations(self, step_number):
         rel = []
         # Relation 1
@@ -119,7 +119,7 @@ class Capacitor(Node):
         # Relation 3 - Relax
         rel.append(self.ports[0].i.symbols[0] + self.ports[1].i.symbols[0])
         # Relation 4
-        rel.append(q.symbols[0] + (self.c * self.v(0)))
+        rel.append(q.symbols[0] - (self.c * self.v(0)))
         # Relations for q
         rel += self.vars['q'].relations(step_number)
 
@@ -180,7 +180,7 @@ class Ground(Node):
         # Relations for old I and V values
         rel += self.ports[0].relations(step_number)
         return rel
-        
+
 class Electrical_link:
     def __init__(self, ports):
         self.ports = ports
@@ -235,7 +235,7 @@ class Simulation:
         print("------------------------------------RESULTS------------------------------------")
         for r in results:
             print(r)
-            
+
     def solve(self, time_step):
         # Concatenate relations.
         rel = []
