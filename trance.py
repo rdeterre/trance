@@ -18,13 +18,12 @@ class Electrical_port:
     def variables(self):
         return [self.i, self.v]
 
-    def initialize(self, derivative_order, total_steps,
-                   default_value):
+    def initialize(self, derivative_order, total_steps):
         if derivative_order < self.min_derivative_order:
             raise Exception("Derivative order cannot be less than %d"
                             % self.min_derivative_order)
-        self.i.initialize(derivative_order, total_steps, default_value)
-        self.v.initialize(derivative_order, total_steps, default_value)
+        self.i.initialize(derivative_order, total_steps, 0)
+        self.v.initialize(derivative_order, total_steps, 0)
 
 class Variable:
     variable_count = 0
@@ -54,7 +53,8 @@ class Variable:
         return rel
 
 class Node:
-    def __init__(self, name):
+    def __init__(self, name, default_value = 0):
+        self.default_value = default_value
         self.name = name
         self.vars = {}
         self.ports = []
@@ -67,15 +67,15 @@ class Node:
             vs += p.variables()
         return vs
 
-    def initialize(self, dt, derivative_order, total_steps, default_value):
+    def initialize(self, dt, derivative_order, total_steps):
         if derivative_order < self.min_derivative_order:
             raise Exception("Needs derivative order higher than %d"
                             % self.min_derivative_order)
         self.dt = dt
         for v in self.vars.values():
-            v.initialize(derivative_order, total_steps, default_value)
+            v.initialize(derivative_order, total_steps)
         for p in self.ports:
-            p.initialize(derivative_order, total_steps, default_value)
+            p.initialize(derivative_order, total_steps)
 
     def relations(self, step_number):
         rel = []
@@ -98,8 +98,8 @@ class Capacitor(Node):
     Relation 2 translates to :
                   I(t) = C * (V(t) - V(t - dt)) / dt
     """
-    def __init__(self, capacitance, name):
-        Node.__init__(self, name)
+    def __init__(self, capacitance, name, default_charge = 0):
+        Node.__init__(self, name, default_charge)
         self.min_derivative_order = 1
         self.vars['q'] = Variable('q')
         self.c = capacitance
@@ -113,7 +113,8 @@ class Capacitor(Node):
         rel = []
         # Relation 1
         q = self.vars['q']
-        rel.append(self.ports[0].i.symbols[0] - (q.symbols[0] - q.symbols[-1]) / self.dt)
+        rel.append(self.ports[0].i.symbols[0]
+                   - (q.symbols[0] - q.symbols[-1]) / self.dt)
         # Relation 2 - Hang in there
         # rel.append(self.ports[0].i.symbols[0] - self.c * (self.v(0) - self.v(-1)) / self.dt)
         # Relation 3 - Relax
