@@ -2,6 +2,9 @@ import sympy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 
+class ClasseDeMerde:
+    pass
+
 class Electrical_port:
     def __init__(self, name):
         self.name = name
