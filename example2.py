@@ -31,7 +31,7 @@ sim = Simulation()
 sim.add_nodes([res, cap, gnd])
 sim.add_links([l1, l2])
 
-sim.simulate(dt = 0.1, total_time_steps = 15)
+sim.simulate(dt = 0.1, total_time = 1)
 
 plt.plot(cap.vars['q'].values)
 plt.show()

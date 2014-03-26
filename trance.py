@@ -215,7 +215,12 @@ class Simulation:
     def add_links(self, links):
         self.links += links
 
-    def simulate(self, dt, total_time_steps):
+    def simulate(self, dt, total_time):
+        error = 0.0001
+        if not (total_time + error) % dt <= error:
+            raise Exception("total_time is not a multiple of dt. Try setting it to %d instead."
+                            % (total_time // dt * dt))
+        total_time_steps = int(total_time // dt)
         self.initialize(dt, total_time_steps)
         for st in range(self.derivative_order, self.total_time_steps):
             print("Solve time step %d" % st)
