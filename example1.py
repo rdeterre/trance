@@ -31,12 +31,7 @@ sim = Simulation()
 sim.add_nodes([cur, cap, gnd])
 sim.add_links([l1, l2])
 
-sim.initialize(dt = 0.1, total_time_steps=15, default_value=0)
-
-cap.vars['q'].values[sim.derivative_order - 1] = 1
-
-sim.simulate()
+sim.simulate(dt = 0.1, total_time_steps = 15)
 
 plt.plot(cap.vars['q'].values)
 plt.show()
-
