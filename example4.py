@@ -10,7 +10,7 @@ from trance import *
       |Gnd|
       +---+
 """
-fabb = Fabs_battery(20, 1100, 1.2, 0.34, 58.8, "fabb")
+fabb = Fabs_battery(20, 1100, 1.2, 0.34, 58.8, "fabb", soc_init=1)
 res = Resistance(resistance=1e3, name="res")
 gnd = Ground(name="gnd")
 

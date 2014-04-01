@@ -82,7 +82,7 @@ class Node:
             if v in self.init_values:
                 self.vars[v].initialize(derivative_order, total_steps, self.init_values[v])
             else:
-                v.initialize(derivative_order, total_steps, 0)
+                self.vars[v].initialize(derivative_order, total_steps, 0)
         for p in self.ports:
             p.initialize(derivative_order, total_steps)
 
@@ -172,26 +172,30 @@ class Voltage_source(Node):
 
 
 class Fabs_battery(Node):
-    def __init__(self, Tref, QnomTref, k, Rfc, voc100, name):
-        Node.__init__(self, name)
+    def __init__(self, Tref, QnomTref, k, Rfc, voc100, name, soc_init):
+        Node.__init__(self,
+                      name,
+                      vars = {'soc': Variable('soc')},
+                      init_values = {'soc': soc_init},
+                      ports = [Electrical_port("%s.p%d" % (name, i))
+                               for i in range(2)])
+
         self.Tref = Tref
         self.QnomTref = QnomTref
         self.k = k
         self.Rfc = Rfc
         self.voc100 = voc100
-        self.vars = {'soc': Variable('soc'), 'ri': Variable('ri')}
-        self.ports = [Electrical_port("%s.p%d" % (self.name, i))
-                      for i in range(2)]
         self.min_derivative_order = 1
 
     def relations(self, step_number):
         rel = []
-        rel.append(self.vars['soc'].symbols[0] - self.vars['soc'].symbols[-1] - 1 / (self.Tref / (math.pow(self.i, k)) * self.pow(self.QnomTref / self.Tref, k)))
-        ri = self.Rfc * (-7.5e-10 * math.pow(self.vars['soc'].symbols[0], 5) + 4.18e-7 * math.pow(self.vars['soc'].symbols[0], 4) - 7.9e5 * math.pow(self.vars['soc'].symbols[0], 3) + 67e-4 * math.pow(self.vars['soc'].symbols[0], 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
-        rel.append(- self.ports[1].v.symbols[0] + self.ports[0].symbols[0] + self.voc100 - ri * self.ports[0].i.symbols[0] - ri / 2 * 1 / (1 - self.ports[0].i.symbols[0] / self.vars['soc'].symbols[0]))
-
+        rel.append(self.vars['soc'].symbols[0] - self.vars['soc'].symbols[-1] - 1 / (self.Tref / ((self.ports[0].i.symbols[0] ** self.k)) * (self.QnomTref / self.Tref ** self.k)))
+        # ri = self.Rfc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
+        ri = self.Rfc
+        rel.append(- self.ports[1].v.symbols[0] + self.ports[0].v.symbols[0] + self.voc100 - ri * self.ports[0].i.symbols[0] - ri / 2 * 1 / (1 - self.ports[0].i.symbols[0] / self.vars['soc'].symbols[0]))
         rel += self.ports[0].relations(step_number)
         rel += self.ports[1].relations(step_number)
+        return rel
 
 class Resistance(Node):
     def __init__(self, resistance, name):
