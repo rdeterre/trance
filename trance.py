@@ -3,9 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-class ClasseDeMerde:
-    pass
-
 class Electrical_port:
     def __init__(self, name, init_current = 0, init_voltage = 0):
         self.name = name
@@ -80,8 +77,10 @@ class Node:
         self.dt = dt
         for v in self.vars.keys():
             if v in self.init_values:
+                print("Init %s with init values" % v)
                 self.vars[v].initialize(derivative_order, total_steps, self.init_values[v])
             else:
+                print("Init %s without init values" % v)
                 self.vars[v].initialize(derivative_order, total_steps, 0)
         for p in self.ports:
             p.initialize(derivative_order, total_steps)
@@ -193,6 +192,8 @@ class Fabs_battery(Node):
         # ri = self.Rfc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
         ri = self.Rfc
         rel.append(- self.ports[1].v.symbols[0] + self.ports[0].v.symbols[0] + self.voc100 - ri * self.ports[0].i.symbols[0] - ri / 2 * 1 / (1 - self.ports[0].i.symbols[0] / self.vars['soc'].symbols[0]))
+        rel.append(self.ports[0].i.symbols[0] + self.ports[1].i.symbols[0])
+        rel += self.vars['soc'].relations(step_number)
         rel += self.ports[0].relations(step_number)
         rel += self.ports[1].relations(step_number)
         return rel
