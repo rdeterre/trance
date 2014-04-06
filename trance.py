@@ -171,7 +171,7 @@ class Voltage_source(Node):
 
 
 class Fabs_battery(Node):
-    def __init__(self, Tref, QnomTref, k, Rfc, voc100, name, soc_init):
+    def __init__(self, Tref, QnomTref, k, Rfc, voc100, dt, name, soc_init):
         Node.__init__(self,
                       name,
                       vars = {'soc': Variable('soc')},
@@ -185,8 +185,7 @@ class Fabs_battery(Node):
         self.Rfc = Rfc
         self.voc100 = voc100
         self.min_derivative_order = 1
-
-       # self.dt = dt
+        self.dt=dt
 
     def relations(self, step_number):
         rel = []
@@ -197,7 +196,7 @@ class Fabs_battery(Node):
         v0 = self.ports[1].v.symbols[0] - self.ports[0].v.symbols[0]
        # rel.append(soc0 - soc1 - 1 / ((self.Tref / (i0 ** self.k)) * (((self.QnomTref / self.Tref) ** self.k))))
 
-        rel.append(soc0 - soc1 + (i0  * 1) /(((soc1 * self.Tref) / (i1 **(self.k - 1))) * ((self.QnomTref/self.Tref) ** self.k)))
+        rel.append(soc0 - soc1 + (i0  * self.dt) /(((soc1 * self.Tref) / (i1 **(self.k - 1))) * ((self.QnomTref/self.Tref) ** self.k)))
 
 
 

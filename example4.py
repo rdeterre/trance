@@ -10,7 +10,7 @@ from trance import *
       |Gnd|
       +---+
 """
-fabb = Fabs_battery(20, 1100, 1.2, 0.34, 58.8, "fabb", soc_init=1)
+fabb = Fabs_battery(20, 1100, 1.2, 0.34, 58.8, 0.5, "fabb", soc_init=1)
 res = Resistance(resistance=1e3, name="res")
 gnd = Ground(name="gnd")
 
@@ -30,7 +30,7 @@ sim = Simulation()
 sim.add_nodes([fabb, res, gnd])
 sim.add_links([l1, l2])
 
-sim.simulate(dt = 1, total_time = 20)
+sim.simulate(dt = 0.5, total_time = 20)
 
 plt.plot(fabb.vars['soc'].values)
 plt.show()
