@@ -30,7 +30,7 @@ sim = Simulation()
 sim.add_nodes([fabb, res, gnd])
 sim.add_links([l1, l2])
 
-sim.simulate(dt = 0.5, total_time = 20)
+sim.simulate(dt = 1, total_time = 20)
 
 plt.plot(fabb.vars['soc'].values)
 plt.show()

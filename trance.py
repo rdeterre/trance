@@ -186,6 +186,8 @@ class Fabs_battery(Node):
         self.voc100 = voc100
         self.min_derivative_order = 1
 
+       # self.dt = dt
+
     def relations(self, step_number):
         rel = []
         soc0 = self.vars['soc'].symbols[0]
@@ -193,7 +195,12 @@ class Fabs_battery(Node):
         i0 = self.ports[0].i.symbols[0]
         i1 = self.ports[0].i.symbols[-1]
         v0 = self.ports[1].v.symbols[0] - self.ports[0].v.symbols[0]
-        rel.append(soc0 - soc1 - 1 / (self.Tref / ((i0 ** self.k)) * (self.QnomTref / self.Tref ** self.k)))
+       # rel.append(soc0 - soc1 - 1 / ((self.Tref / (i0 ** self.k)) * (((self.QnomTref / self.Tref) ** self.k))))
+
+        rel.append(soc0 - soc1 + (i0  * 1) /(((soc1 * self.Tref) / (i1 **(self.k - 1))) * ((self.QnomTref/self.Tref) ** self.k)))
+
+
+
         # ri = self.Rfc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
         ri = self.Rfc
         rel.append(- v0 + self.voc100 - ri * i0 - ri / 2 * 1 / (1 - i0 / soc0))
