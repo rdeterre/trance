@@ -84,6 +84,8 @@ class Node:
                 self.vars[v].initialize(derivative_order, total_steps, 0)
         for p in self.ports:
             p.initialize(derivative_order, total_steps)
+        print("Initialize node %s with dt %f" % (self.name, self.dt))
+
 
     def relations(self, step_number):
         rel = []
@@ -187,6 +189,7 @@ class Fabs_battery(Node):
         self.min_derivative_order = 1
 
     def relations(self, step_number):
+        print("dt : %f" % self.dt)
         rel = []
         soc0 = self.vars['soc'].symbols[0]
         soc1 = self.vars['soc'].symbols[-1]
@@ -280,6 +283,7 @@ class Simulation:
         self.links += links
 
     def simulate(self, dt, total_time):
+        print("Simulate with total time %f and dt %f" % (total_time, dt))
         error = 0.0001
         if not (total_time + error) % dt <= error:
             raise Exception("total_time is not a multiple of dt. Try setting it to %d instead."
