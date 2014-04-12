@@ -196,6 +196,8 @@ class Fabs_battery(Node):
         i0 = self.ports[0].i.symbols[0]
         i1 = self.ports[0].i.symbols[-1]
         u0 = self.ports[1].v.symbols[0] - self.ports[0].v.symbols[0]
+        t0 = (self.Tref/i0**k)*(self.QnomTref/self.Tref)**k
+        t1 = (self.Tref/i1**k)*(self.QnomTref/self.Tref)**k
         # rel.append(soc0 - soc1 - 1 / ((self.Tref / (i0 ** self.k)) * (((self.QnomTref / self.Tref) ** self.k))))
 
         if step_number <= 0:
