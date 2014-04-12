@@ -193,16 +193,19 @@ class Fabs_battery(Node):
         soc1 = self.vars['soc'].symbols[-1]
         i0 = self.ports[0].i.symbols[0]
         i1 = self.ports[0].i.symbols[-1]
-        v0 = self.ports[1].v.symbols[0] - self.ports[0].v.symbols[0]
-       # rel.append(soc0 - soc1 - 1 / ((self.Tref / (i0 ** self.k)) * (((self.QnomTref / self.Tref) ** self.k))))
+        u0 = self.ports[1].v.symbols[0] - self.ports[0].v.symbols[0]
+        # rel.append(soc0 - soc1 - 1 / ((self.Tref / (i0 ** self.k)) * (((self.QnomTref / self.Tref) ** self.k))))
 
-        rel.append(soc0 - soc1 + (i0  * self.dt) /(((soc1 * self.Tref) / (i1 **(self.k - 1))) * ((self.QnomTref/self.Tref) ** self.k)))
-
+        if step_number <= 0:
+            Q100 = ( self.Tref   /   i0**(self.k-1)   ) *  (   self.QnomTref  /   self.Tref  ) ** self.k
+            rel.append(1 - (i0*self.dt)/Q100 - soc0)
+        else:
+            rel.append(soc0 - soc1 + (i0  * self.dt) /(((soc1 * self.Tref) / (i1 **(self.k - 1))) * ((self.QnomTref/self.Tref) ** self.k)))
 
 
         # ri = self.Rfc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
         ri = self.Rfc
-        rel.append(- v0 + self.voc100 - ri * i0 - ri / 2 * 1 / (1 - i0 / soc0))
+        rel.append(- u0 + self.voc100 - ri * i0 - ri / 2 * 1 / (1 - i0 / soc0))
         rel.append(i0 + self.ports[1].i.symbols[0])
         # Caca, a enlever.
         rel += self.vars['soc'].relations(step_number)
