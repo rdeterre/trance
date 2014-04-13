@@ -186,10 +186,11 @@ class Fabs_battery(Node):
         self.k = k
         self.ri_oc = ri_oc
         self.voc100_ref = voc100_ref
+        self.soc_init = soc_init
+        self.bat_series = bat_series
+        self.bat_parallel = bat_parallel
         self.min_derivative_order = 1
-		self.soc_init = soc_init
-		self.bat_series = bat_series
-		self.bat_parallel = bat_parallel
+		
 
     def relations(self, step_number):
         print("dt : %f" % self.dt)
@@ -216,35 +217,35 @@ class Fabs_battery(Node):
         Q100_0 = i0 * t100_0
 		
 		# Battery actual capacity at t in function of amps demand
-		Q1 = soc1 * Q100_1
-		Q0 = soc0 * Q100_0
+        Q1 = soc1 * Q100_1
+        Q0 = soc0 * Q100_0
         
 		# ##### Relations
 		# Peukert's law: soc0 = soc1 - i0 * dt / Q1 
         if step_number <= 0:
-			Q100_first = i0 * t100_0
+            Q100_first = i0 * t100_0
             rel.append(-soc0 + self.soc_init - (i0 * self.dt) / Q100_first)
         else:
             rel.append(-soc0 + soc1 - (i0 * self.dt) / Q1)
 		
-		# Internal Resistance relation (ri is function of soc)
-		# Calculate Ri equivalent for string
+        # Internal Resistance relation (ri is function of soc)
+        # Calculate Ri equivalent for string
         # ri = self.ri_oc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
         ri = self.ri_oc * self.bat_series
 		
-		# Shepherd discharge equation: u0 = voc100_1 - ri * i0 - ki * (1 / (1 - ( i0 * dt / Q1)))      with ki:polarization resistance 
+        # Shepherd discharge equation: u0 = voc100_1 - ri * i0 - ki * (1 / (1 - ( i0 * dt / Q1)))      with ki:polarization resistance 
         ki = ri/2
-		#/!\ voc100_1 SHOULD BE the open voltage at 100%soc of previous timestep
-		voc100 = self.voc100_ref * self.bat_series
-		if step_number <= 0:
-			rel.append(-u0 + voc_100 - ri * i0 - ki * (1 / (1 - (i0 * self.dt / Q100_first))))
-		else:
-			rel.append(-u0 + voc_100 - ri * i0 - ki * (1 / (1 - (i0 * self.dt / Q1))))
+        #/!\ voc100_1 SHOULD BE the open voltage at 100%soc of previous timestep
+        voc100 = self.voc100_ref * self.bat_series
+        if step_number <= 0:
+            rel.append(-u0 + voc_100 - ri * i0 - ki * (1 / (1 - (i0 * self.dt / Q100_first))))
+        else:
+            rel.append(-u0 + voc_100 - ri * i0 - ki * (1 / (1 - (i0 * self.dt / Q1))))
         # Taylor exansion of the equation above.
         # rel.append(- u0 + voc100 - ri * i0 - ki * 1 + i0 * self.dt / Q1)
         
-		# current in = current out ???
-		rel.append(i0 + self.ports[1].i.symbols[0])
+        # current in = current out ???
+        rel.append(i0 + self.ports[1].i.symbols[0])
 		
         # Caca, a enlever.
         rel += self.vars['soc'].relations(step_number)
