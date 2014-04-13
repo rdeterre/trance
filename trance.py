@@ -128,7 +128,7 @@ class Capacitor(Node):
         rel += self.ports[0].relations(step_number)
         rel += self.ports[1].relations(step_number)
         return rel
-
+T
 class Current_source(Node):
     """
     Model for an ideal current source.
@@ -173,7 +173,7 @@ class Voltage_source(Node):
 
 
 class Fabs_battery(Node):
-    def __init__(self, Tref, QnomTref, k, Rfc, voc100, name, soc_init):
+    def __init__(self, Tref, QnomTref, k, ri_oc, voc100_ref, bat_series, bat_parallel, name, soc_init):
         Node.__init__(self,
                       name,
                       vars = {'soc': Variable('soc')},
@@ -184,37 +184,68 @@ class Fabs_battery(Node):
         self.Tref = Tref
         self.QnomTref = QnomTref
         self.k = k
-        self.Rfc = Rfc
-        self.voc100 = voc100
+        self.ri_oc = ri_oc
+        self.voc100_ref = voc100_ref
         self.min_derivative_order = 1
+		self.soc_init = soc_init
+		self.bat_series = bat_series
+		self.bat_parallel = bat_parallel
 
     def relations(self, step_number):
         print("dt : %f" % self.dt)
         rel = []
+		# subscript 1 indicates value at t-1, subscript 0 indicates value at t-1
+		
+		# State of Charge
         soc0 = self.vars['soc'].symbols[0]
         soc1 = self.vars['soc'].symbols[-1]
+		
+		# Load Amperage demand
         i0 = self.ports[0].i.symbols[0]
         i1 = self.ports[0].i.symbols[-1]
+		
+		# Battery terminal voltage
         u0 = self.ports[1].v.symbols[0] - self.ports[0].v.symbols[0]
-        t0 = (self.Tref/i0**self.k)*(self.QnomTref/self.Tref)**self.k
-        t1 = (self.Tref/i1**self.k)*(self.QnomTref/self.Tref)**self.k
-        Q1 = i1 * t1
-        Q0 = i0 * t0
-        # rel.append(soc0 - soc1 - 1 / ((self.Tref / (i0 ** self.k)) * (((self.QnomTref / self.Tref) ** self.k))))
-
+		
+		# Duration of discharge in function of amperage demand, when battery is fully charged
+        t100_0 = (self.Tref/i0**self.k)*(self.bat_parallel * self.QnomTref/self.Tref)**self.k
+        t100_1 = (self.Tref/i1**self.k)*(self.bat_parallel * self.QnomTref/self.Tref)**self.k
+		
+		# Battery Capacity [Ah] in function of amperage demand when fully charged
+        Q100_1 = i1 * t100_1
+        Q100_0 = i0 * t100_0
+		
+		# Battery actual capacity at t in function of amps demand
+		Q1 = soc1 * Q100_1
+		Q0 = soc0 * Q100_0
+        
+		# ##### Relations
+		# Peukert's law: soc0 = soc1 - i0 * dt / Q1 
         if step_number <= 0:
-            Q100 = i0 * t0
-            rel.append(1 - (i0*self.dt)/Q100 - soc0)
+			Q100_first = i0 * t100_0
+            rel.append(-soc0 + self.soc_init - (i0 * self.dt) / Q100_first)
         else:
-            rel.append(soc0 - soc1 + (i0  * self.dt) / Q1)
-
-
-        # ri = self.Rfc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
-        ri = self.Rfc
-        #rel.append(- u0 + self.voc100 - ri * i0 - ri / 2 * 1 / (1 - i0 * self.dt / Q0))
+            rel.append(-soc0 + soc1 - (i0 * self.dt) / Q1)
+		
+		# Internal Resistance relation (ri is function of soc)
+		# Calculate Ri equivalent for string
+        # ri = self.ri_oc * (-7.5e-10 * (self.vars['soc'].symbols[0] ** 5) + 4.18e-7 * (self.vars['soc'].symbols[0] ** 4) - 7.9e5 * (self.vars['soc'].symbols[0] ** 3) + 67e-4 * (self.vars['soc'].symbols[0] ** 2) - 0.265 * self.vars['soc'].symbols[0] + 5.128)
+        ri = self.ri_oc * self.bat_series
+		
+		# Shepherd discharge equation: u0 = voc100_1 - ri * i0 - ki * (1 / (1 - ( i0 * dt / Q1)))      with ki:polarization resistance 
+        ki = ri/2
+		#/!\ voc100_1 SHOULD BE the open voltage at 100%soc of previous timestep
+		voc100 = self.voc100_ref * self.bat_series
+		if step_number <= 0:
+			rel.append(-u0 + voc_100 - ri * i0 - ki * (1 / (1 - (i0 * self.dt / Q100_first))))
+		else:
+			rel.append(-u0 + voc_100 - ri * i0 - ki * (1 / (1 - (i0 * self.dt / Q1))))
         # Taylor exansion of the equation above.
-        rel.append(- u0 + self.voc100 - ri * i0 - ri / 2 * 1 + i0 * self.dt / Q0)
-        rel.append(i0 + self.ports[1].i.symbols[0])
+        # rel.append(- u0 + voc100 - ri * i0 - ki * 1 + i0 * self.dt / Q1)
+        
+		# current in = current out ???
+		rel.append(i0 + self.ports[1].i.symbols[0])
+		
         # Caca, a enlever.
         rel += self.vars['soc'].relations(step_number)
         rel += self.ports[0].relations(step_number)
