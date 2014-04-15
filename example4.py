@@ -1,4 +1,5 @@
 from trance import *
+from fabsbatt import *
 
 """
     +-------+
